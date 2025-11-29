@@ -371,3 +371,118 @@ async def remove_favorite(gif_id: str):
         save_favorites()
         return {"message": "Removed from favorites", "id": gif_id}
     raise HTTPException(status_code=404, detail="Favorite not found")
+
+# --- Generation API (Vertex AI) ---
+
+# Vertex AI Configuration
+VERTEX_PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
+VERTEX_LOCATION = "us-central1" # Defaulting to us-central1
+VERTEX_CREDENTIALS_FILE = "contextual-1764386210520-0e442e93e814.json" # Hardcoded based on user input
+
+class GenerateRequest(BaseModel):
+    prompt: str
+
+@app.post("/api/generate")
+async def generate_gif(request: GenerateRequest):
+    vertex_api_key = os.getenv("VERTEX_API_KEY")
+    if not vertex_api_key:
+        raise HTTPException(status_code=500, detail="VERTEX_API_KEY not set in .env")
+
+    print(f"\n{'='*60}")
+    print(f"[GENERATION] Starting image generation")
+    print(f"[GENERATION] Prompt: {request.prompt}")
+    print(f"[GENERATION] Using API Key: {vertex_api_key[:10]}...")
+    print(f"{'='*60}\n")
+    
+    try:
+        from google import genai
+        from google.genai import types
+        import base64
+        
+        print("[GENERATION] Initializing Google GenAI client...")
+        client = genai.Client(
+            vertexai=True,
+            api_key=vertex_api_key
+        )
+        
+        model_name = "gemini-3-pro-image-preview"
+        print(f"[GENERATION] Using model: {model_name}")
+        
+        # Build content with prompt
+        contents = [
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part(text=request.prompt)
+                ]
+            )
+        ]
+        
+        # Configure generation
+        generate_content_config = types.GenerateContentConfig(
+            temperature=1,
+            top_p=0.95,
+            max_output_tokens=32768,
+            response_modalities=["IMAGE"],  # Only image, no text
+            safety_settings=[
+                types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
+                types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
+                types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
+                types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF")
+            ],
+            image_config=types.ImageConfig(
+                aspect_ratio="1:1",
+                image_size="1K",
+                output_mime_type="image/png"
+            )
+        )
+        
+        print("[GENERATION] Sending request to Vertex AI...")
+        
+        # Generate (non-streaming for simplicity)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=generate_content_config
+        )
+        
+        print(f"[GENERATION] Response received")
+        print(f"[GENERATION] Response parts: {len(response.candidates[0].content.parts) if response.candidates else 0}")
+        
+        # Extract image from response
+        if not response.candidates or not response.candidates[0].content.parts:
+            print("[GENERATION] ERROR: No content in response")
+            raise HTTPException(status_code=500, detail="No image generated in response")
+        
+        # Find the image part
+        image_part = None
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, 'inline_data') and part.inline_data:
+                image_part = part
+                break
+        
+        if not image_part:
+            print("[GENERATION] ERROR: No image part found in response")
+            raise HTTPException(status_code=500, detail="No image found in response parts")
+        
+        # Get image bytes
+        image_bytes = image_part.inline_data.data
+        print(f"[GENERATION] Image received: {len(image_bytes)} bytes")
+        
+        # Convert to base64
+        img_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        print(f"[GENERATION] Base64 encoded: {len(img_b64)} characters")
+        print(f"[GENERATION] ✅ SUCCESS\n")
+        
+        return {
+            "video_base64": img_b64,
+            "format": "png",
+            "prompt": request.prompt
+        }
+        
+    except Exception as e:
+        print(f"\n[GENERATION] ❌ ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        print("\n")
+        raise HTTPException(status_code=500, detail=str(e))

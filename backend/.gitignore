@@ -6,3 +6,5 @@ __pycache__/
 env/
 venv/
 qdrant_data/
+
+contextual-*.json

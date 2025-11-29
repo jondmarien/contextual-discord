@@ -15,6 +15,9 @@ dependencies = [
     "scikit-learn",
     "pandas",
     "datasets",
+    "huggingface_hub",
+    "google-cloud-aiplatform",
+    "google-genai",
 ]
 
 [build-system]
