@@ -11,12 +11,9 @@ dependencies = [
     "qdrant-client",
     "requests",
     "python-dotenv",
-    "hf_xet",
     "scikit-learn",
     "pandas",
     "datasets",
-    "huggingface_hub",
-    "google-cloud-aiplatform",
     "google-genai",
 ]
 
