@@ -12,6 +12,9 @@ dependencies = [
     "requests",
     "python-dotenv",
     "hf_xet",
+    "scikit-learn",
+    "pandas",
+    "datasets",
 ]
 
 [build-system]

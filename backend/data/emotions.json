@@ -1,0 +1,62 @@
+{
+  "emotions": {
+    "anger": {
+      "anchors": ["rage", "furious", "hate this", "broken", "stupid", "error", "bug", "fail", "destroy", "mad", "angry"],
+      "suggestions": ["coding rage", "computer smash", "dumpster fire", "screaming", "table flip", "rage quit", "this is fine"]
+    },
+    "joy": {
+      "anchors": ["happy", "success", "finally", "works", "great", "awesome", "celebrate", "party", "yes", "won", "victory"],
+      "suggestions": ["coding success", "hackerman", "celebration", "party", "champagne", "victory dance", "mission accomplished"]
+    },
+    "funny": {
+      "anchors": ["lol", "lmao", "haha", "funny", "hilarious", "laughing", "joke", "rofl", "dead", "dying"],
+      "suggestions": ["laughing", "spit take", "wheeze", "dying laughing", "hysterical", "lol", "rolling on floor"]
+    },
+    "confusion": {
+      "anchors": ["what", "why", "confused", "weird", "strange", "help", "how", "unknown", "huh", "lost"],
+      "suggestions": ["confused math lady", "what is happening", "confused travolta", "confused nick young", "calculating", "thinking"]
+    },
+    "waiting": {
+      "anchors": ["slow", "loading", "taking forever", "waiting", "stuck", "lag", "pending", "queue"],
+      "suggestions": ["waiting skeleton", "still loading", "mr bean waiting", "jeopardy theme", "loading spinner", "bored"]
+    },
+    "tired": {
+      "anchors": ["sleepy", "exhausted", "late", "3am", "tired", "bed", "nap", "draining", "fatigue"],
+      "suggestions": ["tired coding", "falling asleep", "coffee needs", "zombie", "faceplant", "goodnight"]
+    },
+    "coding": {
+      "anchors": ["code", "programming", "dev", "git", "commit", "push", "deploy", "python", "typescript", "react", "bug fix"],
+      "suggestions": ["coding", "developer", "hacker", "programming", "typing fast", "matrix code", "debugging"]
+    },
+    "love": {
+      "anchors": ["love", "heart", "amazing", "best", "goat", "appreciate", "thanks", "thank you", "adore"],
+      "suggestions": ["heart", "love you", "hugs", "appreciation", "kisses", "wholesome"]
+    },
+    "sadness": {
+      "anchors": ["sad", "crying", "tears", "unlucky", "miss", "pain", "hurt", "bad news", "sorry"],
+      "suggestions": ["crying", "sad violin", "rainy window", "hugs", "comfort", "it's okay"]
+    },
+    "shock": {
+      "anchors": ["omg", "wow", "shocked", "crazy", "insane", "no way", "unbelievable", "wtf"],
+      "suggestions": ["jaw drop", "shocked face", "mind blown", "spit take", "surprised pikachu"]
+    },
+    "gaming": {
+      "anchors": ["game", "play", "win", "lose", "gg", "noob", "carry", "lag", "fps", "rank"],
+      "suggestions": ["gamer", "gg wp", "rage quit", "pogchamp", "ez clap", "skill issue"]
+    },
+    "agreement": {
+      "anchors": ["yes", "agree", "true", "facts", "exactly", "same", "relatable", "fr", "ong"],
+      "suggestions": ["nodding", "thumbs up", "this", "facts", "preach", "handshake"]
+    }
+  },
+  "trending_global": [
+    "coding",
+    "cat",
+    "dog",
+    "funny",
+    "reaction",
+    "anime",
+    "gaming",
+    "meme"
+  ]
+}
