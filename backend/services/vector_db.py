@@ -4,12 +4,11 @@ import uuid
 from typing import List, Dict, Any
 
 class VectorDB:
-    def __init__(self, collection_name="gifs", memory=True):
+    def __init__(self, collection_name="gifs", memory=False):
         print(f"Initializing VectorDB (Memory: {memory})...")
         if memory:
             self.client = QdrantClient(":memory:")
         else:
-            # TODO: Add persistent storage path or URL
             self.client = QdrantClient(path="./qdrant_data")
             
         self.collection_name = collection_name
@@ -17,15 +16,18 @@ class VectorDB:
         print("VectorDB initialized.")
 
     def _ensure_collection(self):
-        # In development, we can just recreate to ensure schema is correct
-        # or use recreate_collection which handles existence check
-        self.client.recreate_collection(
-            collection_name=self.collection_name,
-            vectors_config=models.VectorParams(
-                size=384,  # MiniLM-L6-v2 dimension
-                distance=models.Distance.COSINE
+        try:
+            self.client.get_collection(self.collection_name)
+            print(f"Collection '{self.collection_name}' exists.")
+        except Exception:
+            print(f"Creating collection '{self.collection_name}'...")
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=models.VectorParams(
+                    size=384,  # MiniLM-L6-v2 dimension
+                    distance=models.Distance.COSINE
+                )
             )
-        )
 
     def upsert(self, vectors: List[List[float]], payloads: List[Dict[str, Any]]):
         points = [

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from models.embeddings import EmbeddingModel
 from services.vector_db import VectorDB
@@ -11,6 +12,15 @@ load_dotenv()
 
 app = FastAPI(title="AI GIF Picker API")
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Global instances
 model = None
 vector_db = None
@@ -22,24 +32,9 @@ async def startup_event():
     # Initialize model
     model = EmbeddingModel()
     # Initialize VectorDB
-    vector_db = VectorDB()
+    vector_db = VectorDB(memory=False)
     # Initialize Tenor API
     tenor_api = TenorAPI()
-    
-    # Seed some data for testing if empty
-    if model and vector_db:
-        print("Seeding test data...")
-        test_phrases = [
-            "happy coding",
-            "bugs everywhere",
-            "deployment success",
-            "server crash",
-            "coffee break"
-        ]
-        embeddings = [model.encode(p)[0] for p in test_phrases]
-        payloads = [{"text": p, "type": "test"} for p in test_phrases]
-        vector_db.upsert(embeddings, payloads)
-        print("Seeding complete.")
 
 class SearchRequest(BaseModel):
     query: str
@@ -69,39 +64,82 @@ async def semantic_search(request: SearchRequest):
         
         # 2. Search vector DB
         print("Searching vector DB...")
-        results = vector_db.search(embedding, limit=request.limit)
-        print(f"Found {len(results)} results")
+        all_results = vector_db.search(embedding, limit=request.limit)
+        
+        # Filter by similarity threshold
+        SIMILARITY_THRESHOLD = 0.6
+        results = [r for r in all_results if r.score >= SIMILARITY_THRESHOLD]
+        print(f"Found {len(results)} relevant results (score >= {SIMILARITY_THRESHOLD})")
         
         # 3. If low confidence or few results, fallback to Tenor
-        # For prototype, let's always fetch Tenor if results < limit
         tenor_results = []
         if len(results) < request.limit:
             print("Fetching from Tenor...")
             tenor_data = tenor_api.search(request.query, limit=request.limit)
-            tenor_results = [
-                {
-                    "id": item.get("id"),
-                    "url": item.get("media_formats", {}).get("gif", {}).get("url"),
-                    "title": item.get("content_description"),
-                    "source": "tenor"
-                }
-                for item in tenor_data
-            ]
             
+            # Format Tenor results immediately
+            formatted_tenor_results = []
+            for item in tenor_data:
+                media = item.get("media_formats", {})
+                formatted_tenor_results.append({
+                    "id": item.get("id"),
+                    "title": item.get("content_description", ""),
+                    "url": item.get("itemurl", ""),
+                    "src": media.get("webm", {}).get("url", ""),
+                    "gif_src": media.get("gif", {}).get("url", ""),
+                    "width": media.get("gif", {}).get("dims", [498, 373])[0],
+                    "height": media.get("gif", {}).get("dims", [498, 373])[1],
+                    "preview": media.get("tinygif", {}).get("url", "")
+                })
+            
+            # LAZY INDEXING: Save these results to VectorDB with the query's embedding
+            if formatted_tenor_results:
+                print(f"Indexing {len(formatted_tenor_results)} new results for query: '{request.query}'")
+                # Create a list of the same embedding for all results
+                embeddings = [embedding] * len(formatted_tenor_results)
+                # Use the formatted results as payloads
+                payloads = formatted_tenor_results
+                vector_db.upsert(embeddings, payloads)
+                
+            tenor_results = formatted_tenor_results
+
+        # Format results for Discord
+        formatted_results = []
+        
+        # Process Semantic Results
+        for r in results:
+            payload = r.payload
+            formatted_results.append(payload)
+
+        # Add Tenor Results (already formatted)
+        formatted_results.extend(tenor_results)
+
+        # Deduplicate by ID
+        seen_ids = set()
+        unique_results = []
+        for r in formatted_results:
+            if r['id'] not in seen_ids:
+                unique_results.append(r)
+                seen_ids.add(r['id'])
+
         return {
-            "query": request.query,
-            "inference_time_ms": duration,
-            "results": [
-                {
-                    "score": r.score,
-                    "payload": r.payload,
-                    "source": "semantic"
-                }
-                for r in results
-            ] + tenor_results
+            "results": unique_results[:request.limit]
         }
     except Exception as e:
         print(f"Error during search: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/reset")
+async def reset_db():
+    print("Resetting Vector DB...")
+    global vector_db
+    try:
+        # Re-initialize with a fresh collection (dropping old one)
+        vector_db.client.delete_collection(vector_db.collection_name)
+        vector_db._ensure_collection()
+        return {"status": "success", "message": "Brain wiped! 🧠✨"}
+    except Exception as e:
+        print(f"Error resetting DB: {e}")
         raise HTTPException(status_code=500, detail=str(e))
